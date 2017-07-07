@@ -1,31 +1,21 @@
-# Getting Started With Skype Bots
+# Getting Started with Slackbots
 
-This app shows how you can create a simple Skype bot using the Node.js SDK for the Microsoft Bot Framework.
+This Slack bot is a wrapper for the Numbers API that shows how to receive and send simple messages and initiate a conversation using BotKit.
 
 You can follow the [tutorial](http://sitepoint.com) to build this application or jump straight to the code.
 
 # Requirements
-- A Skype account.
-- A Microsoft Account (live, outlook, msn, hotmail, etc).
-- A [Movie DB](https://www.themoviedb.org) account with a free developer API key
-- [Ngrok](https://ngrok.com/).
+- A Slack account with administrative privileges.
 - [Node.js](https://nodejs.org/en/download/) version 5 or higher.
 
 # Installation
-1. Fork this repository into your own Github account.
-2. Start Ngrok in a console window using `ngrok http 3978` and copy the HTTPS URL you're given.
-3. Go to https://dev.botframework.com/ and register a new bot with the following information:
-   - Name: MovieBot (any name would do)
-   - Bot handle: Any available handle (cannot be changed later)
-   - Description: A bot that gives movies information (any description would do)
-   - Messaging endpoint: https://[NGROK_URL]/api/messages (for example, https://e2d58786.ngrok.io/api/messages)
-4. Copy the MICROSOFT_APP_ID and MICROSOFT_APP_PASSWORD keys (your password is only shown one time).
-5. Start the app with something like MOVIE_DB_API_KEY=xxxxxx MICROSOFT_APP_ID=xxxxxx MICROSOFT_APP_PASSWORD=xxxxxx node bot.js.
-6. Log in to Skype and add the bot from your bot's dashboard with the *Add to Skype button*. 
-7. Play with the bot in Skype by saying `movie`.
+1. Clone this branch and `cd` into it.
+2. Go to https://my.slack.com/apps/build/custom-integration and create a Bot
+3. Copy the token given by Slack
+4. Go back to the terminal window and install the depencies of the app with `npm install`
+4. Start the bot with `token=<YOUR_BOT_TOKEN> node bot.js`
+5. Invite the bot to one of your team's channels with `/invite @<NAME_OF_YOUR_BOT>`
+6. Play with the bot. It will give a random fact every time a number is mentioned in a message. Or initiate a conversation with either a mention, a direct mention, or a direct message with the word `trivia`, for example, `@<NAME_OF_YOUR_BOT> trivia`.
 
 # License
 MIT
-
-![Powered by https://www.themoviedb.org](https://www.themoviedb.org/assets/9b3f9c24d9fd5f297ae433eb33d93514/images/v4/logos/408x161-powered-by-rectangle-green.png)
-

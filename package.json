@@ -1,8 +1,8 @@
 {
-  "name": "getting-started-with-skype-bots",
+  "name": "getting-started-with-slackbots",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,8 +10,7 @@
   "author": "Esteban Herrera",
   "license": "MIT",
   "dependencies": {
-    "botbuilder": "^3.4.4",
-    "moviedb": "^0.2.7",
-    "restify": "^4.2.0"
+    "botkit": "^0.2.2",
+    "superagent": "^2.2.0"
   }
 }

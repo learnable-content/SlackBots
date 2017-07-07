@@ -1,167 +1,121 @@
-const builder = require('botbuilder');
-const restify = require('restify');
-const mdb = require('moviedb')(process.env.MOVIE_DB_API_KEY);
+const Botkit = require('botkit');
+const request = require('superagent');
 
-// Setup Restify Server
-const server = restify.createServer();
-server.listen(process.env.port || process.env.PORT || 3978, () => {
-  console.log('%s listening to %s', server.name, server.url);
+// Cheking for the token
+if (!process.env.token) {
+  console.error('Error: Specify a token in an environment variable');
+  process.exit(1);
+}
+
+// Creates the Slack bot
+const controller = Botkit.slackbot();
+
+// Starts the websocket connection
+controller.spawn({
+  token: process.env.token
+}).startRTM(err => {
+  if (err) {
+    console.error(`Error: Could not start the bot - ${err}`);
+  }
 });
 
-// Create chat bot
-const connector = new builder.ChatConnector({
-  appId: process.env.MICROSOFT_APP_ID,
-  appPassword: process.env.MICROSOFT_APP_PASSWORD,
-});
-const bot = new builder.UniversalBot(connector);
-server.post('/api/messages', connector.listen());
-
-const intents = new builder.IntentDialog();
-bot.dialog('/', intents);
-
-// Get this information with mdb.configuration()
-const imagesBaseUrl = 'https://image.tmdb.org/t/p/';
-const posterSize = 'w185';
-
-// Get the supported genres with mdb.genreList()
-const genres = {
-  action: {
-    id: 28,
-  },
-  adventure: {
-    id: 12,
-  },
-  animation: {
-    id: 16,
-  },
-  comedy: {
-    id: 35,
-  },
-  documentary: {
-    id: 99,
-  },
-  drama: {
-    id: 18,
-  },
-  horror: {
-    id: 27,
-  },
-  mystery: {
-    id: 9648,
-  },
-  romance: {
-    id: 10749,
-  },
-  '(quit)': {
-    id: 0,
-  },
-};
-
-const getMovie = (session) => {
-  // Send typing message
-  session.sendTyping();
-
-  // Call the Movie DB API passing the genre and release year and sorting by popularity
-  mdb.discoverMovie({
-    sort_by: 'popularity.desc',
-    with_genres: session.dialogData.genre,
-    primary_release_year: session.dialogData.year,
-  }, (err, res) => {
-    const msg = new builder.Message(session);
-    // If there's no error
-    if (!err) {
-      const movies = res.results;
-      // Choose a random movie from the array of movies
-      const index = Math.floor(Math.random() * movies.length);
-
-      msg.text('I found this movie: \n\n**%(title)s**\n\n*%(overview)s*', movies[index]);
-
-      // If the movie has a poster image
-      if (movies[index].poster_path) {
-        // Add the image as a message attachment
-        msg.attachments([{
-          contentType: 'image/jpeg',
-          contentUrl: `${imagesBaseUrl}${posterSize}${movies[index].poster_path}`,
-        }]);
-      }
-    } else { // There's an error
-      msg.text(`Oops, an error, can you please say 'movie' again?`);
-    }
-
-    // End the dialog
-    session.endDialog(msg);
+// Listening for the event when the bot joins a channel
+controller.on('channel_joined', (bot, message) => {
+  bot.say({
+    text: `Thank you for inviting me to channel ${message.channel.name}`,
+    channel: message.channel.id
   });
-};
+});
 
-// If there's no match
-intents.onDefault([
-  (session, args, next) => {
-    if (!session.userData.name) {
-      // Begin the askName dialog
-      session.beginDialog('/askName');
-    } else {
-      // Execute the next function
-      next();
+// When someone references a number in a message
+controller.hears(['[0-9]+'], ['ambient'], (bot, message) => {
+  const number = message.match[0];
+  request
+    .get(`http://numbersapi.com/${number}`)
+    .end((err, res) => {
+      if(!err) {
+        bot.reply(message, res.text);
+      }
     }
-  },
-  session =>
-    session.send(`I'm new around here %s. I only know the 'movie' command, say it if you want a movie recommendation`, session.userData.name),
-]);
+  );
+});
 
-// askName dialog
-bot.dialog('/askName', [
-  session =>
-    builder.Prompts.text(session, `Hi! I'm MovieBot. What's your name?`),
-  (session, results) => {
-    // Store the user's name on the userData session attribute
-    session.userData.name = results.response;
-    session.endDialog('Hello %s', session.userData.name);
-  },
-]);
+// When someone sends a message to the bot with the word trivia
+controller.hears(['trivia'], ['direct_message', 'direct_mention', 'mention'], (bot, message) => {
+  bot.startConversation(message, (err, convo) => {
 
-// When a user message matches 'movie'
-intents.matches(/^movie/i, [
-  // First ask for the genere
-  session =>
-    session.beginDialog('/genrePrompt'),
-  // Then ask for the release year
-  (session, results) => {
-    if (results.response.id > 0) {
-      session.dialogData.genre = results.response.id;
-      session.beginDialog('/yearPrompt');
-    } else { // If the user chose the quit option
-      session.send('Okay, maybe next time');
-      session.endDialog();
-    }
-  },
-  // Finally call the Movie DB API
-  (session, results) => {
-    session.dialogData.year = results.response;
-    getMovie(session);
-  },
-]);
+    const askParameter = (response, convoAskParameter, text) => { 
+      convoAskParameter.ask(text, (response, convoAsk) => {
+        convoAsk.say('All right, let me see...');
+        convoAsk.next(); // End of the conversation
+      }, { key: 'number' });
+    };
 
-// Genre Prompt Dialog
-bot.dialog('/genrePrompt', [
-  session =>
-    builder.Prompts.choice(session, 'What genre would you like?', genres),
-  (session, results) => {
-    // Use the genre choosen by the user as the index
-    const choice = genres[results.response.entity.toLowerCase()];
+    convo.ask('What kind of trivia do you want? GENERAL, MATH, or DATE',
+      [
+        // When the answer is general
+        {
+          pattern: 'general',
+          callback: (response, convoCallback) => {
+            askParameter(response, convoCallback, 'Great, give me either a number or the keyword random');
+            convoCallback.next();
+          }
+        },
+        // When the answer is math
+        {
+          pattern: 'math',
+          callback: (response, convoCallback) => {
+            askParameter(response, convoCallback, 'Great, give me either a number or the keyword random');
+            convoCallback.next();
+          }
+        },
+        // When the answer is date
+        {
+          pattern: 'date',
+          callback: (response, convoCallback) => {
+            askParameter(response, convoCallback, 'Great, give me either a number, or a day of year in the form month/day (eg. 5/15), or the keyword random');
+            convoCallback.next();
+          }
+        },
+        // When no valid answer is provided
+        {
+          default: true,
+          callback: (response, convoCallback) => {
+            convoCallback.repeat(); // just repeat the question
+            convoCallback.next();
+          }
+        }
+      ], { key: 'type' }
+    );
 
-    session.endDialogWithResult({ response: choice });
-  },
-]);
+    // When the conversations ends
+    convo.on('end', convoEnd => {
+      // And the flow is completed
+      if (convoEnd.status=='completed') {
+        // Extract all the responses in the form of a dictionary
+        //let responses = convoEnd.extractResponses();
 
-// Year Prompt Dialog
-bot.dialog('/yearPrompt', [
-  session =>
-    builder.Prompts.text(session, `Enter a release year (in the format yyyy) if you want to specify one or just respond with something like 'no' otherwise`),
-  (session, results) => {
-    // there's a match for something that seems like a year?
-    const matched = results.response.match(/\d{4}/g);
+        // Extract the specific responses by key
+        const type  = convoEnd.extractResponse('type').toLowerCase() !== 'general' 
+                        ? convoEnd.extractResponse('type').toLowerCase() 
+                        : '';
+        const number  = convoEnd.extractResponse('number').toLowerCase();
+                
+        // Make the request to the API
+        request
+          .get(`http://numbersapi.com/${number}/${type}`)
+          .end((err, res) => {
+            if(err) {
+              bot.reply(message, 'Sorry, I couldn\'t process your request');
+            } else {
+              bot.reply(message, res.text);
+            }
+          }
+        );
+      } else {
+        bot.reply('Sorry, something happened that caused the conversation to stop prematurely');
+      }
 
-    session.endDialogWithResult({ response: matched });
-  },
-]);
-
+    });
+  });
+});
