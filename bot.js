@@ -2,120 +2,41 @@ const Botkit = require('botkit');
 const request = require('superagent');
 const Wit = require('node-wit').Wit;
 const Log = require('node-wit').log;
-const config = require('./config');
 
+// Cheking for the token
+if (!process.env.token) {
+  console.error('Error: Specify a Slack token in an environment variable');
+  process.exit(1);
+}
 
-// Server port for outcoming webhook and slack command
-const port = process.env.PORT || 3000;
+if (!process.env.wit_token) {
+  console.error('Error: Specify a Wit token in an environment variable');
+  process.exit(1);
+}
 
 // Creates the Slack bot
-const controller = Botkit.slackbot({
-  debug: false,
-  retry: Infinity, // reconnect to Slack RTM when connection goes bad
-});
+const controller = Botkit.slackbot();
 
-// Starts the websocket connection with the incoming webhook configuration
-const beepboop = require('beepboop-botkit').start(controller, { debug: true });
-
-// Send the user who added the bot to their team a welcome message the first time it's connected
-beepboop.on('botkit.rtm.started', (bot, resource, meta) => {
-  const slackUserId = resource.SlackUserID;
-
-  if (meta.isNew && slackUserId) {
-    bot.startPrivateConversation({ user: slackUserId }, (err, convo) => {
-      if (err) {
-        console.log(err);
-      } else {
-        convo.say('I am a bot that has just joined your team');
-        convo.say('You must now /invite me to a channel so that I can be of use!');
-      }
-    });
+// Starts the websocket connection
+controller.spawn({
+  token: process.env.token
+}).startRTM(err => {
+  if (err) {
+    console.error(`Error: Could not start the bot - ${err}`);
   }
 });
-
-
-// Outcoming webhook and slack command specific code
-controller.setupWebserver(port, (err, expressWebserver) => {
-  controller.createWebhookEndpoints(expressWebserver, [process.env.SLACK_VERIFY_TOKEN]);
-});
-
-
-controller.on('slash_command', (bot, message) => {
-  let number;
-
-  if (message.text !== '') {
-    number = message.text;
-  } else {
-    number = Math.floor(Math.random() * 100);
-  }
-
-  // Immediately reply a confirmation to user
-  bot.replyPrivate(message, 'Command received...');
-
-  request
-    .get(`http://numbersapi.com/${number}`)
-    .end((err, res) => {
-      if (err) {
-        bot.replyPrivateDelayed(message, 'Got an error, can you try again with a valid number?');
-      } else {
-        bot.replyPrivateDelayed(message, res.text);
-      }
-    }
-  );
-});
-
-
-// Incoming webhook specific code
-const sendTrivia = () => {
-  const date = new Date();
-  const today = `${date.getMonth() + 1}/${date.getDate()}`;
-
-  request
-    .get(`http://numbersapi.com/${today}/date`)
-    .end((err, res) => {
-      if (err) {
-        console.error('Got an error from the Numbers API: ', err.stack || err);
-      } else {
-        // Send the webhook to all teams
-        Object.keys(beepboop.workers).forEach((id) => {
-          // this is an instance of a botkit worker
-          const bot = beepboop.workers[id].worker;
-
-          if (bot.config.SlackIncomingWebhookURL) {
-            bot.configureIncomingWebhook({ url: bot.config.SlackIncomingWebhookURL });
-            bot.sendWebhook({
-              text: res.text,
-            },
-            (webhookErr, webhookRes) => {
-              if (webhookErr) {
-                console.error('Got an error when sending the webhook: ', webhookErr.stack || webhookErr);
-              } else {
-                console.log(webhookRes);
-              }
-            });
-          }
-        });
-      }
-    }
-  );
-};
-
-// Send an incoming webhook every X milliseconds
-const interval = config.SEND_TRIVIA_FREQ_MS;
-setInterval(sendTrivia, interval);
-
 
 // Listening for the event when the bot joins a channel
 controller.on('channel_joined', (bot, { channel: { id, name } }) => {
   bot.say({
     text: `Thank you for inviting me to channel ${name}`,
-    channel: id,
+    channel: id
   });
 });
 
 // When someone reference a number in a message
 controller.hears(['[0-9]+'], ['ambient'], (bot, message) => {
-  const [number] = message.match;
+  const [ number ] = message.match;
   request
     .get(`http://numbersapi.com/${number}`)
     .end((err, res) => {
@@ -139,7 +60,7 @@ const maybeCreateSession = (userId, bot, message) => {
       userId,
       context: {},
       bot,
-      message,
+      message
     };
   }
 
@@ -168,13 +89,13 @@ const actions = {
     const text = res.text;
 
     // We return a promise to let our bot know when we're done sending
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       bot.reply(message, text);
       return resolve();
     });
   },
   getTrivia({ context, entities }) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const intent = firstEntityValue(entities, 'intent');
       const rawType = firstEntityValue(entities, 'type');
       const random = firstEntityValue(entities, 'random');
@@ -186,7 +107,7 @@ const actions = {
       const number = random ? 'random' : firstEntityValue(entities, 'number');
       const newContext = Object.assign({}, context);
 
-      if ((intent && intent === 'trivia') || number) {
+      if (intent && (intent === 'trivia') || number) {
         if (number) {
           // Make the request to the API
           request
@@ -224,11 +145,11 @@ const actions = {
 const wit = new Wit({
   accessToken: process.env.wit_token,
   actions,
-  logger: new Log.Logger(Log.INFO),
+  logger: new Log.Logger(Log.INFO)
 });
 
 controller.hears(['(.*)'], ['direct_mention', 'mention'], (bot, message) => {
-  const [text] = message.match;
+  const [ text ] = message.match;
 
   // We retrieve the user's current session, or create one if it doesn't exist
   // This is needed for our bot to figure out the conversation history
@@ -240,7 +161,7 @@ controller.hears(['(.*)'], ['direct_mention', 'mention'], (bot, message) => {
     sessionId, // the user's current session
     text, // the user's message
     sessions[sessionId].context // the user's current session state
-  ).then((context) => {
+  ).then(context => {
     // Our bot did everything it has to do.
     // Now it will be waiting for further user messages to proceed.
 
