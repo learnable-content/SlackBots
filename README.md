@@ -2,7 +2,7 @@
 
 This Slack bot is a wrapper for the Numbers API that shows how to receive and send simple messages and initiate a conversation using BotKit.
 
-You can follow the [tutorial](http://sitepoint.com) to build this application or jump straight to the code.
+You can follow the [tutorial](https://www.sitepoint.com/premium/courses/slack-bots-2936/lesson/1/step/1) to build this application or jump straight to the code.
 
 # Requirements
 - A Slack account with administrative privileges.
