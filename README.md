@@ -2,7 +2,7 @@
 
 This Slackbot shows how to use outgoing webhooks and Slash Commands with BotKit. It belongs to the fourth part of a series of tutorials about Slackbots.
 
-You can follow the [tutorial](http://sitepoint.com) to build this application or jump straight to the code.
+You can follow the [tutorial](https://www.sitepoint.com/premium/courses/slack-bots-2936/lesson/1/step/4) to build this application or jump straight to the code.
 
 # Requirements
 - A Slack account with administrative privileges.
