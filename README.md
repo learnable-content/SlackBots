@@ -2,7 +2,7 @@
 
 This Slackbot is a wrapper for the Numbers API that shows how incoming webhooks in Slack work using BotKit.
 
-You can follow the [tutorial](http://sitepoint.com) to build this application or jump straight to the code.
+You can follow the [tutorial](https://www.sitepoint.com/premium/courses/slack-bots-2936/lesson/1/step/3) to build this application or jump straight to the code.
 
 # Requirements
 - A Slack account with administrative privileges.
