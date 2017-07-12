@@ -2,7 +2,7 @@
 
 This Slackbot is ready to be deployed in [Beepboop](https://beepboophq.com) as a Slack App and shows how interactive messages work and some rich formatting options available in Botkit. It belongs to the sixth part of a series of tutorials about Slackbots.
 
-You can follow the [tutorial](http://sitepoint.com) to build this application or jump straight to the code.
+You can follow the [tutorial](https://www.sitepoint.com/premium/courses/slack-bots-2936/lesson/1/step/6) to build this application or jump straight to the code.
 
 # Requirements
 - A Slack account with administrative privileges.
